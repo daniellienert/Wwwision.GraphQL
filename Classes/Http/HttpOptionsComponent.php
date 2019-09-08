@@ -5,6 +5,7 @@ use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Http\Component\ComponentChain;
 use Neos\Flow\Http\Component\ComponentContext;
 use Neos\Flow\Http\Component\ComponentInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 
 /**
  * A simple HTTP Component that captures OPTIONS requests and responds with a general "Allow: GET, POST" header if a matching graphQL endpoint is configured
@@ -18,6 +19,12 @@ class HttpOptionsComponent implements ComponentInterface
     protected $endpoints;
 
     /**
+     * @Flow\Inject
+     * @var ResponseFactoryInterface
+     */
+    protected $responseFactory;
+
+    /**
      * @param ComponentContext $componentContext
      * @return void
      */
@@ -29,11 +36,15 @@ class HttpOptionsComponent implements ComponentInterface
             return;
         }
         // no matching graphQL endpoint configured => skip
-        if (!isset($this->endpoints[$httpRequest->getRelativePath()])) {
+        if (!isset($this->endpoints[$httpRequest->getUri()->getPath()])) {
             return;
         }
-        $httpResponse = $componentContext->getHttpResponse();
-        $httpResponse->setHeader('Allow', 'GET, POST');
+
+        $response = $this->responseFactory->createResponse();
+
+        $response = $response->withHeader('Allow', 'GET, POST');
+
+        $componentContext->replaceHttpResponse($response);
         $componentContext->setParameter(ComponentChain::class, 'cancel', true);
     }
 }
